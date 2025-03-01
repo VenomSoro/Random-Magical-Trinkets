@@ -1,0 +1,40 @@
+{
+    "Version": "1.0.0",
+    "Sections": [
+        {
+            "Name": "TrinketGenerationChances",
+            "Description": "Adjust the base chance values for trinket generation.",
+            "IsAdvanced": false,
+            "Keys": [
+                {
+                    "Min": 1,
+                    "Max": 100,
+                    "Value": 4,
+                    "Name": "TrinketGenerationBaseChance",
+                    "Description": "Base chance of a trinket generating on an enemy and in dungeon loot.",
+                    "$version": "v1",
+                    "$type": "DaggerfallWorkshop.Game.Utility.ModSupport.ModSettings.SliderIntKey"
+                },
+                {
+                    "Min": 0,
+                    "Max": 100,
+                    "Value": 10,
+                    "Name": "MajorTrinketBaseChance",
+                    "Description": "Base chance of a generated trinket's quality being Major.",
+                    "$version": "v1",
+                    "$type": "DaggerfallWorkshop.Game.Utility.ModSupport.ModSettings.SliderIntKey"
+                },
+                {
+                    "Min": 0,
+                    "Max": 100,
+                    "Value": 5,
+                    "Name": "GrandTrinketBaseChance",
+                    "Description": "Base chance of a generated trinket's quality being Grand.",
+                    "$version": "v1",
+                    "$type": "DaggerfallWorkshop.Game.Utility.ModSupport.ModSettings.SliderIntKey"
+                }
+            ],
+            "$version": "v1"
+        }
+    ]
+}

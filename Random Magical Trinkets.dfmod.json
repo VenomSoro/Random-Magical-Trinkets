@@ -1,0 +1,15 @@
+{
+    "ModTitle": "Random Magical Trinkets",
+    "ModVersion": "1.0.0",
+    "ModAuthor": "VenomSoro",
+    "ContactInfo": "N/A",
+    "DFUnity_Version": "1.1.0",
+    "ModDescription": "Adds a luck-based loot system. Try your chance at getting useful little trinkets brimming with magic.",
+    "GUID": "fb185045-ffbc-42eb-b955-7aeba21c235d",
+    "Files": [
+        "Assets/Game/Mods/Random Magical Trinkets/Scripts/MagicalEffects.cs",
+        "Assets/Game/Mods/Random Magical Trinkets/Scripts/RandomMagicalTrinketsMain.cs",
+        "Assets/Game/Mods/Random Magical Trinkets/Scripts/AbstractMagicalEffects.cs",
+        "Assets/Game/Mods/Random Magical Trinkets/modsettings.json"
+    ]
+}
