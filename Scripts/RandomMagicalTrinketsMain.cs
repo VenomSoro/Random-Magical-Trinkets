@@ -13,6 +13,7 @@ using DaggerfallWorkshop;
 using DaggerfallConnect.Save;
 using Wenzil.Console;
 using DaggerfallWorkshop.Game.Utility.ModSupport.ModSettings;
+using DaggerfallWorkshop.Game.Formulas;
 
 namespace RandomMagicalTrinketsMod
 {
@@ -94,21 +95,20 @@ namespace RandomMagicalTrinketsMod
                     return "Parameter passed is not valid. see usage";
                 }
 
-                DaggerfallUnityItem randomTrinket;
-                int rollItemType = Dice100.Roll();
+                DaggerfallUnityItem randomTrinket = GenerateRandomItem(quality);
 
-                if (rollItemType <= 30)
+                randomTrinket.customMagic = GenerateMagicEffects(quality, randomTrinket.ItemGroup == ItemGroups.Weapons);
+                RenameTrinket(randomTrinket);
+
+                if (randomTrinket.ItemGroup == ItemGroups.Weapons || randomTrinket.ItemGroup == ItemGroups.Armor)
                 {
-                    randomTrinket = ItemBuilder.CreateRandomGem();
+                    randomTrinket.value += 1000 * (quality + 1);
                 }
                 else
                 {
-                    randomTrinket = GenerateRandomJewellery();
+                    randomTrinket.value = 1000 * (quality + 1);
                 }
 
-                randomTrinket.customMagic = GenerateMagicEffects(quality);
-                RenameTrinket(randomTrinket);
-                randomTrinket.value = 1000 * (quality + 1);
                 randomTrinket.IdentifyItem();
 
                 player.Items.AddItem(randomTrinket);
@@ -187,23 +187,120 @@ namespace RandomMagicalTrinketsMod
 
             if (quality >= 0)
             {
-                int rollItemType = Dice100.Roll();
+                randomTrinket = GenerateRandomItem(quality);
 
-                if (rollItemType <= 30)
+                randomTrinket.customMagic = GenerateMagicEffects(quality, randomTrinket.ItemGroup == ItemGroups.Weapons);
+                RenameTrinket(randomTrinket);
+
+                if (randomTrinket.ItemGroup == ItemGroups.Weapons || randomTrinket.ItemGroup == ItemGroups.Armor)
                 {
-                    randomTrinket = ItemBuilder.CreateRandomGem();
+                    randomTrinket.value += 1000 * (quality + 1);
                 }
                 else
                 {
-                    randomTrinket = GenerateRandomJewellery();
+                    randomTrinket.value = 1000 * (quality + 1);
                 }
-
-                randomTrinket.customMagic = GenerateMagicEffects(quality);
-                RenameTrinket(randomTrinket);
-                randomTrinket.value = 1000 * (quality + 1);
             }
 
             return randomTrinket;
+        }
+
+        private static DaggerfallUnityItem GenerateRandomItem(int quality)
+        {
+            DaggerfallUnityItem randomItem;
+            int rollItemType = Dice100.Roll();
+
+            if (rollItemType <= 40)
+            {
+                rollItemType = UnityEngine.Random.Range(0, 3);
+
+                if (rollItemType == 0)
+                {
+                    randomItem = GenerateRandomArmor(quality);
+                }
+                else if (rollItemType == 1)
+                {
+                    randomItem = GenerateRandomWeapon(quality);
+                }
+                else
+                    randomItem = ItemBuilder.CreateRandomClothing(player.Gender, player.Race);
+            }
+            else
+            {
+                rollItemType = Dice100.Roll();
+
+                if (rollItemType <= 30)
+                {
+                    randomItem = ItemBuilder.CreateRandomGem();
+                }
+                else
+                {
+                    randomItem = GenerateRandomJewellery();
+                }
+            }
+
+            return randomItem;
+        }
+
+        private static DaggerfallUnityItem GenerateRandomArmor(int quality)
+        {
+            DaggerfallUnityItem armor = ItemBuilder.CreateRandomArmor(player.Level, player.Gender, player.Race);
+
+            // Quality = 0 -> 2% | Quality = 1 -> 8% | Quality = 2 -> 32%
+            int DaedricChance = (int)(2 * Mathf.Pow(4, quality));
+            if (Dice100.SuccessRoll(DaedricChance) && armor.NativeMaterialValue != (int)ArmorMaterialTypes.Daedric)
+            {
+                ItemBuilder.ApplyArmorSettings(armor, player.Gender, player.Race, ArmorMaterialTypes.Daedric, -1);
+            }
+
+            return armor;
+        }
+
+        private static DaggerfallUnityItem GenerateRandomWeapon(int quality)
+        {
+            WeaponMaterialTypes minMaterial = GetMinimumWeaponMaterial(quality);
+            WeaponMaterialTypes currentMaterial = FormulaHelper.RandomMaterial(player.Level);
+            int[] customWeapons = GameManager.Instance.ItemHelper.GetCustomItemsForGroup(ItemGroups.Weapons);
+            DaggerfallUnityItem weapon;
+
+            // 0 - 17 for vanilla weapons (except for the 19th item arrows with index 18)
+            // Weapons enum lengtth is 19, so 18 without arrows
+            int randWeaponIndex = UnityEngine.Random.Range(0, 18 + customWeapons.Length);
+
+            if (randWeaponIndex < 18)
+            {
+                weapon = new DaggerfallUnityItem(ItemGroups.Weapons, randWeaponIndex);
+            }
+            else
+            {
+                weapon = ItemBuilder.CreateItem(ItemGroups.Weapons, customWeapons[randWeaponIndex - 18]);
+            }
+
+            int DaedricChance = (int)(2 * Mathf.Pow(4, quality));
+            if (Dice100.SuccessRoll(DaedricChance) && currentMaterial != WeaponMaterialTypes.Daedric)
+            {
+                currentMaterial = WeaponMaterialTypes.Daedric;
+            }
+            else if (currentMaterial < minMaterial)
+            {
+                currentMaterial = minMaterial;
+            }
+
+            ItemBuilder.ApplyWeaponMaterial(weapon, currentMaterial);
+
+            return weapon;
+        }
+
+        private static WeaponMaterialTypes GetMinimumWeaponMaterial(int quality)
+        {
+            WeaponMaterialTypes minMaterial = WeaponMaterialTypes.Steel;
+
+            if (quality == 2)
+                minMaterial = WeaponMaterialTypes.Mithril;
+            else if (quality == 1)
+                minMaterial = WeaponMaterialTypes.Elven;
+
+            return minMaterial;
         }
 
         // Exists primarily to generate magical items excluding the wand item
@@ -216,12 +313,18 @@ namespace RandomMagicalTrinketsMod
             return jewellery;
         }
 
-        private static CustomEnchantment[] GenerateMagicEffects(int quality)
+        private static CustomEnchantment[] GenerateMagicEffects(int quality, bool isWeapon)
         {
             List<CustomEnchantment> magicEffects = new List<CustomEnchantment>();
             List<string> effects = new List<string> { "Mind", "Stamina", "Vitality", "Fortify Stat", "Fortify Skill", "Elemental Guard", "Spell Guard", "Reflect", "Wizardry", "Capacity", "Protection", "Feather" };
             List<int> skills = Enumerable.Range(0, 35).ToList();
             List<int> stats = new List<int> { 0, 1, 2, 3, 4, 5, 6, 7 };
+
+            if (isWeapon)
+            {
+                // Add weapon-specific enchantmnets to the list to potentially be picked
+                effects.AddRange(new List<string> { "Elemental Strike", "Miracles", "Silencing", "Ruin" });
+            }
 
             for (int i = 0; i <= quality; i++)
             {
@@ -245,6 +348,11 @@ namespace RandomMagicalTrinketsMod
                 {
                     int randElemental = UnityEngine.Random.Range(0, DaggerfallResistances.Count);
                     enchantment = GenerateCustomEnchantment("Elemental Guard " + quality, randElemental.ToString());
+                    effects.RemoveAt(randEffect);
+                }
+                else if (selectedEffect.Equals("Elemental Strike")) {
+                    int randElemental = UnityEngine.Random.Range(0, 5);
+                    enchantment = GenerateCustomEnchantment("Elemental Strike " + quality, randElemental.ToString());
                     effects.RemoveAt(randEffect);
                 }
                 else
@@ -275,18 +383,17 @@ namespace RandomMagicalTrinketsMod
             int numOfEffects = trinket.customMagic.Length;
             string name;
 
-
             if (numOfEffects == 1)
             {
-                name = "Minor " + trinket.ItemName + " of " + getEffectName(trinket.customMagic[0]);
+                name = trinket.ItemName + " of Minor " + getEffectName(trinket.customMagic[0]);
             }
             else if (numOfEffects == 2)
             {
-                name = "Major " + trinket.ItemName + " of " + getEffectName(trinket.customMagic[0]) + " & " + getEffectName(trinket.customMagic[1]);
+                name = trinket.ItemName + " of Major " + getEffectName(trinket.customMagic[0]) + " & " + getEffectName(trinket.customMagic[1]);
             }
             else
             {
-                name = "Grand " + trinket.ItemName + " of " + getEffectName(trinket.customMagic[0]) + ", " + getEffectName(trinket.customMagic[1]) + ", & " + getEffectName(trinket.customMagic[2]);
+                name = trinket.ItemName + " of Grand " + getEffectName(trinket.customMagic[0]) + ", " + getEffectName(trinket.customMagic[1]) + ", & " + getEffectName(trinket.customMagic[2]);
             }
 
             trinket.RenameItem(name);
@@ -296,6 +403,7 @@ namespace RandomMagicalTrinketsMod
         {
             string effectName = customEnchantment.EffectKey;
             string[] elementKey = { "Fire", "Frost", "Poison", "Shock", "Magicka" };
+            string[] elementStrikeKey = { "Flames", "Blizzards", "Acid", "Storms", "Force" };
             int customParm = int.Parse(customEnchantment.CustomParam);
 
             switch (effectName)
@@ -314,6 +422,11 @@ namespace RandomMagicalTrinketsMod
                 case "Elemental Guard 1":
                 case "Elemental Guard 2":
                     effectName = elementKey[customParm] + " Guard";
+                    break;
+                case "Elemental Strike 0":
+                case "Elemental Strike 1":
+                case "Elemental Strike 2":
+                    effectName = elementStrikeKey[customParm];
                     break;
             }
 
@@ -463,6 +576,24 @@ namespace RandomMagicalTrinketsMod
 
             Feather feather = new Feather();
             GameManager.Instance.EntityEffectBroker.RegisterEffectTemplate(feather);
+
+            ElementalStrike0 elementalStrike0 = new ElementalStrike0();
+            GameManager.Instance.EntityEffectBroker.RegisterEffectTemplate(elementalStrike0);
+
+            ElementalStrike1 elementalStrike1 = new ElementalStrike1();
+            GameManager.Instance.EntityEffectBroker.RegisterEffectTemplate(elementalStrike1);
+
+            ElementalStrike2 elementalStrike2 = new ElementalStrike2();
+            GameManager.Instance.EntityEffectBroker.RegisterEffectTemplate(elementalStrike2);
+
+            MiracleStrike miracleStrike = new MiracleStrike();
+            GameManager.Instance.EntityEffectBroker.RegisterEffectTemplate(miracleStrike);
+
+            SilencingStrike silencingStrike = new SilencingStrike();
+            GameManager.Instance.EntityEffectBroker.RegisterEffectTemplate(silencingStrike);
+
+            RuinStrike ruinStrike = new RuinStrike();
+            GameManager.Instance.EntityEffectBroker.RegisterEffectTemplate(ruinStrike);
         }
     }
 }

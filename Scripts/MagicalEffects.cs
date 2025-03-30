@@ -3,6 +3,8 @@ using DaggerfallWorkshop.Game.Entity;
 using DaggerfallWorkshop.Game.Items;
 using DaggerfallWorkshop.Game.MagicAndEffects;
 using DaggerfallWorkshop.Game.MagicAndEffects.MagicEffects;
+using DaggerfallWorkshop.Game.Utility;
+using UnityEngine;
 
 namespace RandomMagicalTrinketsMod
 {
@@ -395,6 +397,140 @@ namespace RandomMagicalTrinketsMod
             else if (context == EnchantmentPayloadFlags.Unequipped)
             {
                 sourceItem.weightInKg = 0.25f;
+            }
+
+            return null;
+        }
+    }
+
+    // Weapon-specific Enchantments
+    public class ElementalStrike0 : ElementalStrike
+    {
+        public override int minMagnitude => 10;
+
+        public override int maxMagnitude => 20;
+
+        public override string EffectKey => "Elemental Strike 0";
+    }
+
+    public class ElementalStrike1 : ElementalStrike
+    {
+        public override int minMagnitude => 20;
+
+        public override int maxMagnitude => 40;
+
+        public override string EffectKey => "Elemental Strike 1";
+    }
+
+    public class ElementalStrike2 : ElementalStrike
+    {
+        public override int minMagnitude => 30;
+
+        public override int maxMagnitude => 60;
+
+        public override string EffectKey => "Elemental Strike 2";
+    }
+
+    public class MiracleStrike : WeaponStrike
+    {
+        public override string EffectKey => "Miracles";
+
+        public override int Variants => 3;
+
+        public override EffectBundleSettings CreateEffectBundleSettings(EnchantmentParam param, EffectEntry effectEntry)
+        {
+            EffectBundleSettings effectBundleSettings = base.CreateEffectBundleSettings(param, effectEntry);
+            effectBundleSettings.Name = "Miracle Strike";
+            effectBundleSettings.Icon.index = 51;
+
+            //Debug.Log($"{effectBundleSettings.Name} damage: {effectEntry.Settings.MagnitudeBaseMin} - {effectEntry.Settings.MagnitudeBaseMax}");
+
+            return effectBundleSettings;
+        }
+
+        public override EffectEntry CreateEffectEntry(EnchantmentParam param)
+        {
+            int quality = int.Parse(param.CustomParam);
+
+            EffectEntry effectEntry = base.CreateEffectEntry(param);
+            effectEntry.Key = TransferHealth.EffectKey;
+            effectEntry.Settings.MagnitudeBaseMin = 6 + (6 * quality);
+            effectEntry.Settings.MagnitudeBaseMax = 12 + (12 * quality);
+            effectEntry.Settings.MagnitudePlusMin = 0;
+            effectEntry.Settings.MagnitudePlusMax = 0;
+            effectEntry.Settings.MagnitudePerLevel = 1;
+
+
+            return effectEntry;
+        }
+    }
+
+    public class SilencingStrike : WeaponStrike
+    {
+        public override string EffectKey => "Silencing";
+
+        public override int Variants => 3;
+
+        public override EffectBundleSettings CreateEffectBundleSettings(EnchantmentParam param, EffectEntry effectEntry)
+        {
+            EffectBundleSettings effectBundleSettings = base.CreateEffectBundleSettings(param, effectEntry);
+            effectBundleSettings.Name = "Silencing Strike";
+            effectBundleSettings.Icon.index = 37;
+
+           //Debug.Log($"{effectBundleSettings.Name} chance: {effectEntry.Settings.ChanceBase} Duration: {effectEntry.Settings.DurationBase}");
+
+            return effectBundleSettings;
+        }
+
+        public override EffectEntry CreateEffectEntry(EnchantmentParam param)
+        {
+            int quality = int.Parse(param.CustomParam);
+
+            EffectEntry effectEntry = base.CreateEffectEntry(param);
+            effectEntry.Key = Silence.EffectKey;
+            effectEntry.Settings.ChanceBase = 35 + (15 * quality);
+            effectEntry.Settings.ChancePlus = 0;
+            effectEntry.Settings.ChancePerLevel = 1;
+            effectEntry.Settings.DurationBase = 6 + (6 * quality);
+            effectEntry.Settings.DurationPlus = 0;
+            effectEntry.Settings.DurationPerLevel = 1;
+
+            return effectEntry;
+        }
+    }
+
+    public class RuinStrike : RandomMagicalEffect
+    {
+        public override string EffectKey => "Ruin";
+
+        public override int Variants => 3;
+
+        public override void SetProperties()
+        {
+            base.SetProperties();
+
+            properties.EnchantmentPayloadFlags = EnchantmentPayloadFlags.Strikes;
+        }
+
+        public override PayloadCallbackResults? EnchantmentPayloadCallback(EnchantmentPayloadFlags context, EnchantmentParam? param = null, DaggerfallEntityBehaviour sourceEntity = null, DaggerfallEntityBehaviour targetEntity = null, DaggerfallUnityItem sourceItem = null, int sourceDamage = 0)
+        {
+            base.EnchantmentPayloadCallback(context, param, sourceEntity, targetEntity, sourceItem, sourceDamage);
+
+            if (context != EnchantmentPayloadFlags.Strikes || targetEntity == null || param == null || sourceItem == null || sourceDamage == 0)
+                return null;
+
+            int killChance = 5 + (5 * int.Parse(param.Value.CustomParam));
+
+            //Debug.Log($"Ruin Kill Chance: {killChance}");
+
+            if (Dice100.SuccessRoll(killChance))
+            {
+                //Debug.Log($"Ruin was delivered to {targetEntity.Entity.Name}");
+                return new PayloadCallbackResults()
+                {
+                    strikesModulateDamage = targetEntity.Entity.CurrentHealth,
+                    durabilityLoss = 10
+                };
             }
 
             return null;
